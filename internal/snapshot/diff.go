@@ -27,7 +27,7 @@ type Diff struct {
 type side struct {
 	// prefix names a path's blob: "<commit>:", or ":" for the index.
 	prefix string
-	// commit is the tree's commit, or "" for the index.
+	// commit is the tree's commit, or "" for the index and the working tree.
 	commit string
 	// worktree marks the working tree: files are read from disk, not from git.
 	worktree bool

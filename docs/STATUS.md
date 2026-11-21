@@ -28,6 +28,7 @@ GoDryCrap v1.1.0.
 | Missing profile, no `-coverprofile` | `TestCrapMissingProfile` |
 | Empty profile (mode line only, and a zero-byte file) | `TestCrapEmptyProfile` |
 | Wrong-shard profile, with and without `-profiled-only` | `TestCrapWrongShardProfile` |
+| Files left out by build constraints, with and without `-tags` | `TestCrapSkipsFilesNotBuilt`, `TestCrapAllChangedFilesNotBuilt`, `TestFileBuilt` |
 | Stale profile (block past the last line) | `TestCrapStaleProfile` |
 | Malformed profile records | `TestCrapMalformedProfile` |
 | Deletion-only change | `TestComplexityDeletionOnly` |

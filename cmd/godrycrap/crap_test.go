@@ -258,6 +258,41 @@ func TestCrapDiffRangeAndPaths(t *testing.T) {
 	res.want(t, gate.OK, "ok\t3\t3\t100%\texample.com/m/p.F")
 }
 
+func TestCrapSkipsFilesNotBuilt(t *testing.T) {
+	r := newRepo(t)
+	src := map[string]string{
+		"p/a.go":         "package p\n" + fn("Plain", 3),
+		"p/b_windows.go": "package p\n" + fn("Win", 3),
+		"p/c.go":         "//go:build ignore\n\npackage p\n" + fn("Ignored", 3),
+		"p/d.go":         "//go:build race\n\npackage p\n" + fn("Raced", 3),
+		"p/e.go":         "//go:build !race\n\npackage p\n" + fn("Unraced", 3),
+	}
+	r.stage(src)
+	// The profile covers only what a default build compiles.
+	prof := r.profile("cover.out", append(cover(t, "p/a.go", src["p/a.go"], hit(1)), cover(t, "p/e.go", src["p/e.go"], hit(1))...)...)
+	res := r.run("crap", "-coverprofile", prof, "-format", "json")
+	res.want(t, gate.OK, `"p/b_windows.go"`, `"p/c.go"`, `"p/d.go"`)
+	rows := crapRows(t, res)
+	if len(rows) != 2 || rows["Plain"].Coverage != 100 || rows["Unraced"].Coverage != 100 {
+		t.Errorf("rows = %+v, want Plain and Unraced at 100%%", rows)
+	}
+	r.run("crap", "-coverprofile", prof, "-format", "text").want(t, gate.OK, "not built (not scored): p/b_windows.go, p/c.go, p/d.go")
+
+	// With -tags race the constraint flips, so d.go needs coverage and e.go drops out.
+	prof = r.profile("race.out", append(cover(t, "p/a.go", src["p/a.go"], hit(1)), cover(t, "p/d.go", src["p/d.go"], hit(1))...)...)
+	res = r.run("crap", "-coverprofile", prof, "-tags", "race", "-format", "text")
+	res.want(t, gate.OK, "not built (not scored): p/b_windows.go, p/c.go, p/e.go", "p.Raced")
+	res.lacks(t, "p.Unraced")
+}
+
+func TestCrapAllChangedFilesNotBuilt(t *testing.T) {
+	r := newRepo(t)
+	src := "//go:build ignore\n\npackage p\n" + fn("Ignored", 3)
+	r.stage(map[string]string{"p/c.go": src})
+	prof := r.profile("cover.out", cover(t, "p/c.go", src, hit(0))...)
+	r.run("crap", "-coverprofile", prof).want(t, gate.OK, "0 functions", "not built (not scored): p/c.go")
+}
+
 func TestCrapMarkdown(t *testing.T) {
 	r := newRepo(t)
 	src := "package p\n" + fn("F", 3)

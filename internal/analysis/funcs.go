@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
+	"go/build/constraint"
 	"go/parser"
 	"go/token"
 	"path"
@@ -15,8 +16,10 @@ import (
 
 // File is one parsed Go source file and the functions it declares.
 type File struct {
-	Path    string // slash-separated, relative to the repository or as given
-	Package string // import path, or the package clause name without a go.mod
+	// Constraint is the //go:build expression, or nil without one.
+	Constraint constraint.Expr
+	Path       string // slash-separated, relative to the repository or as given
+	Package    string // import path, or the package clause name without a go.mod
 	// InModule is true when Package is an import path from a go.mod.
 	InModule bool
 	// Layout is every coverage block go cover instruments in the file,
@@ -88,11 +91,12 @@ func ParseFile(filePath string, src []byte, mods Modules) (*File, error) {
 		key = path.Dir(filePath) + ":" + file.Name.Name
 	}
 	out := &File{
-		Path:     filePath,
-		Package:  pkgPath,
-		InModule: ok,
-		Fset:     fset,
-		AST:      file,
+		Path:       filePath,
+		Package:    pkgPath,
+		InModule:   ok,
+		Fset:       fset,
+		AST:        file,
+		Constraint: buildConstraint(file),
 	}
 	layout, err := coverlayout.File(fset, file, src)
 	if err != nil {

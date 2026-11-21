@@ -195,6 +195,7 @@ Text and Markdown output start with that line. JSON output has `version` and `go
 - When walking a directory: files under any directory crapper and dryer skip (`vendor`, `testdata`, `node_modules`, `build`, `dist`, `out`, `target`, `coverage`, `test`, `tests`, `spec`, `specs`, `__tests__`, `.git`, `.venv` and a few more; see `internal/analysis/filter.go`). These, except `ent` and `gen`, are scored when named directly, as crapper does.
 - Files with the standard `// Code generated ... DO NOT EDIT.` header.
 - Function declarations without a body.
+- In `crap` only: files whose build constraints (`//go:build` line, `_GOOS` and `_GOARCH` file name suffixes) do not match the current GOOS, GOARCH and `-tags`. They are listed as `not built (not scored)` in the summary and under `not_built` in JSON, never scored as 0%. A file that only a tag turns on is skipped unless you pass the same `-tags` as `go test`. `complexity` and `dupes` still score such files.
 
 A staged (or HEAD-side, in range mode) file that does not parse is an error. A before-side file that does not parse is treated as absent.
 

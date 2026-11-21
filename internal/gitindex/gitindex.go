@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -24,7 +25,7 @@ type Repo struct {
 
 // Hints for errors the user can fix.
 const (
-	rangeHint = "use -diff BASE..HEAD or BASE...HEAD with commits that exist in this clone (fetch the base branch first, e.g. git fetch origin main)"
+	rangeHint = "use -diff BASE..HEAD, BASE...HEAD, or a bare BASE for the working tree, with commits that exist in this clone (fetch the base branch first, e.g. git fetch origin main)"
 	gitHint   = "run godrycrap inside a git repository (or point -C at one) with git on PATH, or pass files or directories to score them without git"
 )
 
@@ -129,7 +130,7 @@ func (r *Repo) ChangedGoFilesInWorktree(base string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(changed, splitZ(untracked)...), nil
+	return slices.Compact(slices.Sorted(slices.Values(append(changed, splitZ(untracked)...)))), nil
 }
 
 // WorktreeFiles lists the tracked and the untracked, not ignored paths that

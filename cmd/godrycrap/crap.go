@@ -48,6 +48,7 @@ type crapOptions struct {
 	thresholds
 	profiles     profileList
 	profiledOnly bool
+	tags         string
 }
 
 func runCrap(args []string, stdout, stderr io.Writer) gate.Status {
@@ -57,10 +58,11 @@ func runCrap(args []string, stdout, stderr io.Writer) gate.Status {
 	o.thresholds.register(fs, "CRAP", "a failing function that already existed and whose CC did not rise warns instead of failing (coverage before the change is unknown)")
 	fs.Var(&o.profiles, "coverprofile", "existing go test coverage `profile` to read; repeat to merge shards (required)")
 	fs.BoolVar(&o.profiledOnly, "profiled-only", false, "score only the changed files the profile covers; still an error when it covers none")
+	fs.StringVar(&o.tags, "tags", "", "comma-separated build `tags`, as for go test -tags; a changed file whose build constraints do not match GOOS, GOARCH and these tags is listed as not built instead of scored")
 	if done, err := parse(fs, &o.options, args, stderr); done || err != nil {
 		return parseStatus(stderr, "crap", err)
 	}
-	rows, err := o.score()
+	rows, notBuilt, err := o.score()
 	if err != nil {
 		return fail(stderr, "crap", err)
 	}
@@ -74,26 +76,31 @@ func runCrap(args []string, stdout, stderr io.Writer) gate.Status {
 		table.Rows = append(table.Rows, []string{r.Status, number(r.CRAP), strconv.Itoa(r.CC), number(r.Coverage) + "%", r.Namespace + "." + r.Name, r.File + ":" + strconv.Itoa(r.Line)})
 	}
 	table.Summary = counts(statuses)
-	if err := o.emit(stdout, table, map[string]any{"command": "crap", "status": gate.Worst(statuses).String(), "functions": rows}); err != nil {
+	if len(notBuilt) > 0 {
+		table.Summary += "; not built (not scored): " + strings.Join(notBuilt, ", ")
+	}
+	if err := o.emit(stdout, table, map[string]any{"command": "crap", "status": gate.Worst(statuses).String(), "functions": rows, "not_built": notBuilt}); err != nil {
 		return fail(stderr, "crap", err)
 	}
 	return gate.Worst(statuses)
 }
 
-// score loads the profile and the changed functions and scores each one.
-func (o *crapOptions) score() ([]crapRow, error) {
+// score loads the profile and the changed functions and scores each one. The
+// second result lists the changed files left out because their build
+// constraints do not match.
+func (o *crapOptions) score() ([]crapRow, []string, error) {
 	profile, err := coverage.Load(o.profiles)
 	if err != nil {
-		return nil, usererr.Wrap(err, regenerateHint)
+		return nil, nil, usererr.Wrap(err, regenerateHint)
 	}
 	t, err := o.load()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	profile.Bind(t.files)
-	blocks, err := o.fileBlocks(profile, t)
+	blocks, notBuilt, err := o.fileBlocks(profile, t)
 	if err != nil {
-		return nil, profileError(err)
+		return nil, nil, profileError(err)
 	}
 	rows := []crapRow{}
 	for _, c := range t.changes {
@@ -101,36 +108,44 @@ func (o *crapOptions) score() ([]crapRow, error) {
 			rows = append(rows, o.row(c, b))
 		}
 	}
-	return rows, nil
+	return rows, notBuilt, nil
 }
 
 // fileBlocks looks up the profile's blocks for each file with a changed
 // function, and checks that each changed function has its own block.
+// A file whose build constraints do not match is returned in notBuilt and
+// never looked up: a profile cannot cover it.
 // With -profiled-only, files the profile does not cover are left out, but
 // it is still an error when it covers none of them.
-func (o *crapOptions) fileBlocks(profile *coverage.Profile, t *target) (map[string][]coverage.Block, error) {
+func (o *crapOptions) fileBlocks(profile *coverage.Profile, t *target) (found map[string][]coverage.Block, notBuilt []string, err error) {
 	byFile := map[string][]*analysis.Func{}
 	for _, c := range t.changes {
 		byFile[c.After.File] = append(byFile[c.After.File], c.After)
 	}
-	found := map[string][]coverage.Block{}
+	tags := analysis.DefaultTags(strings.FieldsFunc(o.tags, func(r rune) bool { return r == ',' || r == ' ' }))
+	found = map[string][]coverage.Block{}
 	for _, file := range t.files {
 		fns, changed := byFile[file.Path]
 		if !changed {
 			continue
 		}
+		if !file.Built(tags) {
+			notBuilt = append(notBuilt, file.Path)
+			delete(byFile, file.Path)
+			continue
+		}
 		blocks, keep, err := o.lookup(profile, file, fns)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if keep {
 			found[file.Path] = blocks
 		}
 	}
 	if len(byFile) > 0 && len(found) == 0 {
-		return nil, fmt.Errorf("%w: none of the %d changed files (wrong shard?)", coverage.ErrNotInProfile, len(byFile))
+		return nil, nil, fmt.Errorf("%w: none of the %d changed files (wrong shard?)", coverage.ErrNotInProfile, len(byFile))
 	}
-	return found, nil
+	return found, notBuilt, nil
 }
 
 // lookup is one file's blocks, checked against each changed function in it.
