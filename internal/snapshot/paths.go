@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/tfournet/GoDryCrap/internal/analysis"
-	"github.com/tfournet/GoDryCrap/internal/usererr"
+	"github.com/matlockx/GoDryCrap/internal/analysis"
+	"github.com/matlockx/GoDryCrap/internal/usererr"
 )
 
 // pathHint is the hint for a path that cannot be read.

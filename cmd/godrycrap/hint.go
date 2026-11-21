@@ -8,11 +8,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/tfournet/GoDryCrap/internal/gate"
-	"github.com/tfournet/GoDryCrap/internal/usererr"
+	"github.com/matlockx/GoDryCrap/internal/gate"
+	"github.com/matlockx/GoDryCrap/internal/usererr"
 )
 
-const issuesURL = "https://github.com/tfournet/GoDryCrap/issues"
+const issuesURL = "https://github.com/matlockx/GoDryCrap/issues"
 
 // cmdline is the current run's arguments, for the bug hint.
 var cmdline []string
@@ -37,7 +37,7 @@ func bugHint(name, msg string, args []string) string {
 	body := fmt.Sprintf("godrycrap %s, %s, %s/%s, command: %s",
 		moduleVersion(readBuildInfo()), runtime.Version(), runtime.GOOS, runtime.GOARCH,
 		shellJoin(append([]string{"godrycrap"}, redactArgs(args)...)))
-	return fmt.Sprintf("godrycrap: internal error. Report it: gh issue create -R tfournet/GoDryCrap --title %s --body %s\ngodrycrap: or open %s\n",
+	return fmt.Sprintf("godrycrap: internal error. Report it: gh issue create -R matlockx/GoDryCrap --title %s --body %s\ngodrycrap: or open %s\n",
 		shellQuote(title), shellQuote(body), issuesURL)
 }
 

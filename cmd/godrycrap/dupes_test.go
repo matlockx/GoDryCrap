@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tfournet/GoDryCrap/internal/gate"
+	"github.com/matlockx/GoDryCrap/internal/gate"
 )
 
 func nearFixture(t *testing.T) (copyA, copyB, other string) {

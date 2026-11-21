@@ -5,8 +5,8 @@ package snapshot
 import (
 	"path"
 
-	"github.com/tfournet/GoDryCrap/internal/analysis"
-	"github.com/tfournet/GoDryCrap/internal/gitindex"
+	"github.com/matlockx/GoDryCrap/internal/analysis"
+	"github.com/matlockx/GoDryCrap/internal/gitindex"
 )
 
 // Diff is a git diff: the changed files as the before and after trees hold

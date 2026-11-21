@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tfournet/GoDryCrap/internal/analysis"
+	"github.com/matlockx/GoDryCrap/internal/analysis"
 )
 
 func TestCRAP(t *testing.T) {

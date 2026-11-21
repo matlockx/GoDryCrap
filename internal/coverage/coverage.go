@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tfournet/GoDryCrap/internal/analysis"
-	"github.com/tfournet/GoDryCrap/internal/coverlayout"
+	"github.com/matlockx/GoDryCrap/internal/analysis"
+	"github.com/matlockx/GoDryCrap/internal/coverlayout"
 )
 
 // Block is one profile record: a source span, its statement count, and its

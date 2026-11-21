@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tfournet/GoDryCrap/internal/usererr"
+	"github.com/matlockx/GoDryCrap/internal/usererr"
 )
 
 // Repo is a git work tree, addressed by its top-level directory.

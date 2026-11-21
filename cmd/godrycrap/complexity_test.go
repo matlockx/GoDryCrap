@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tfournet/GoDryCrap/internal/gate"
+	"github.com/matlockx/GoDryCrap/internal/gate"
 )
 
 func TestComplexityThresholdFixtures(t *testing.T) {
@@ -176,7 +176,7 @@ func TestComplexityParseErrorIsError(t *testing.T) {
 
 func TestComplexityPathMode(t *testing.T) {
 	res := runIn(t, "complexity", "-format", "tsv", "../../testdata/complexity", "../../testdata/generated", "../../testdata/receivers/receivers.go")
-	res.want(t, gate.Fail, "warn\t9\tnew", "fail\t10\tnew", "fail\t11\tnew", "github.com/tfournet/GoDryCrap/testdata/complexity.CC9")
+	res.want(t, gate.Fail, "warn\t9\tnew", "fail\t10\tnew", "fail\t11\tnew", "github.com/matlockx/GoDryCrap/testdata/complexity.CC9")
 	res.lacks(t, "Generated")
 }
 

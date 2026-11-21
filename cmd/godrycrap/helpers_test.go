@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tfournet/GoDryCrap/internal/gate"
+	"github.com/matlockx/GoDryCrap/internal/gate"
 )
 
 // repo is a temporary git repository with a go.mod for module example.com/m.

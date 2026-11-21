@@ -8,11 +8,11 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/tfournet/GoDryCrap/internal/analysis"
-	"github.com/tfournet/GoDryCrap/internal/dupes"
-	"github.com/tfournet/GoDryCrap/internal/gate"
-	"github.com/tfournet/GoDryCrap/internal/report"
-	"github.com/tfournet/GoDryCrap/internal/snapshot"
+	"github.com/matlockx/GoDryCrap/internal/analysis"
+	"github.com/matlockx/GoDryCrap/internal/dupes"
+	"github.com/matlockx/GoDryCrap/internal/gate"
+	"github.com/matlockx/GoDryCrap/internal/report"
+	"github.com/matlockx/GoDryCrap/internal/snapshot"
 )
 
 type dupeSide struct {

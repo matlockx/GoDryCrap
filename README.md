@@ -108,7 +108,7 @@ It is advisory: it exits 0 unless there is an error. Functions are compared only
 The repo tracks the latest stable Go release (currently `go 1.27` with `toolchain go1.27.3` in go.mod). It uses only the standard library and needs nothing at run time beyond `git`.
 
 ```sh
-go install github.com/tfournet/GoDryCrap/cmd/godrycrap@latest
+go install github.com/matlockx/GoDryCrap/cmd/godrycrap@latest
 # or, from a checkout:
 go build -o godrycrap ./cmd/godrycrap
 ```
@@ -232,13 +232,13 @@ Duplicates:
 Bug reports from people and coding agents are welcome. When godrycrap hits an internal error or panics, it exits 3 and prints a ready-made command on stderr:
 
 ```
-godrycrap: internal error. Report it: gh issue create -R tfournet/GoDryCrap --title '<command>: <error>' --body '<version>, <go version>, <os/arch>, command: <arguments>'
-godrycrap: or open https://github.com/tfournet/GoDryCrap/issues
+godrycrap: internal error. Report it: gh issue create -R matlockx/GoDryCrap --title '<command>: <error>' --body '<version>, <go version>, <os/arch>, command: <arguments>'
+godrycrap: or open https://github.com/matlockx/GoDryCrap/issues
 ```
 
 The body holds only the version, platform and arguments, never file contents, and the hint cuts every path in the arguments and the title down to its base name, so no directory structure goes into a public issue. Still read the text before you file it. Errors you can fix yourself (a bad flag, a missing, malformed or stale coverage profile, a directory that is not a git repository, a syntax error) print a `godrycrap: hint:` line that says how instead.
 
-To report a bug, run that command or use the [bug report form](https://github.com/tfournet/GoDryCrap/issues/new?template=bug_report.yml), and include:
+To report a bug, run that command or use the [bug report form](https://github.com/matlockx/GoDryCrap/issues/new?template=bug_report.yml), and include:
 
 - the output of `godrycrap version`, and your OS and architecture;
 - the command you ran and its exit code;

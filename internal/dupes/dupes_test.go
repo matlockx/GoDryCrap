@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tfournet/GoDryCrap/internal/analysis"
+	"github.com/matlockx/GoDryCrap/internal/analysis"
 )
 
 // pr prints a normalized tree the way dryer's shape.pr does.

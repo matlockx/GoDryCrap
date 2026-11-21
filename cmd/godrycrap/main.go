@@ -8,7 +8,7 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/tfournet/GoDryCrap/internal/gate"
+	"github.com/matlockx/GoDryCrap/internal/gate"
 )
 
 const usage = `Usage: godrycrap <command> [flags] [path ...]

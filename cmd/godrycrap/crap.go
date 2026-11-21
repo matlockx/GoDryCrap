@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tfournet/GoDryCrap/internal/analysis"
-	"github.com/tfournet/GoDryCrap/internal/coverage"
-	"github.com/tfournet/GoDryCrap/internal/gate"
-	"github.com/tfournet/GoDryCrap/internal/report"
-	"github.com/tfournet/GoDryCrap/internal/usererr"
+	"github.com/matlockx/GoDryCrap/internal/analysis"
+	"github.com/matlockx/GoDryCrap/internal/coverage"
+	"github.com/matlockx/GoDryCrap/internal/gate"
+	"github.com/matlockx/GoDryCrap/internal/report"
+	"github.com/matlockx/GoDryCrap/internal/usererr"
 )
 
 type crapRow struct {

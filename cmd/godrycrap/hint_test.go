@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tfournet/GoDryCrap/internal/coverage"
-	"github.com/tfournet/GoDryCrap/internal/gate"
+	"github.com/matlockx/GoDryCrap/internal/coverage"
+	"github.com/matlockx/GoDryCrap/internal/gate"
 )
 
 func TestUserErrorsGetAFixHint(t *testing.T) {
@@ -84,9 +84,9 @@ func TestInternalErrorGetsTheBugHint(t *testing.T) {
 	got := b.String()
 	for _, want := range []string{
 		"godrycrap crap: bad header",
-		"godrycrap: internal error. Report it: gh issue create -R tfournet/GoDryCrap --title 'crap: bad header \"x\"' --body 'godrycrap v9.8.7, go",
+		"godrycrap: internal error. Report it: gh issue create -R matlockx/GoDryCrap --title 'crap: bad header \"x\"' --body 'godrycrap v9.8.7, go",
 		`command: godrycrap crap -coverprofile '\''it'\''\'\'''\''s.out'\'' pkg'`,
-		"godrycrap: or open https://github.com/tfournet/GoDryCrap/issues",
+		"godrycrap: or open https://github.com/matlockx/GoDryCrap/issues",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("stderr lacks %q:\n%s", want, got)

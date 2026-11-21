@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tfournet/GoDryCrap/internal/gate"
+	"github.com/matlockx/GoDryCrap/internal/gate"
 )
 
 // test_import_path_comes_from_go_mod, from crapper's tests/test_go.py: the

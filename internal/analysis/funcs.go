@@ -9,8 +9,8 @@ import (
 	"path"
 	"sort"
 
-	"github.com/tfournet/GoDryCrap/internal/coverlayout"
-	"github.com/tfournet/GoDryCrap/internal/usererr"
+	"github.com/matlockx/GoDryCrap/internal/coverlayout"
+	"github.com/matlockx/GoDryCrap/internal/usererr"
 )
 
 // File is one parsed Go source file and the functions it declares.

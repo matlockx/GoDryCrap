@@ -1,4 +1,4 @@
-module github.com/tfournet/GoDryCrap
+module github.com/matlockx/GoDryCrap
 
 go 1.27
 

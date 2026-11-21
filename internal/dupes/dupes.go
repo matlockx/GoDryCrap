@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/tfournet/GoDryCrap/internal/analysis"
+	"github.com/matlockx/GoDryCrap/internal/analysis"
 )
 
 // Defaults. MinLines and MinNodes are dryer's; Threshold is 0.8
