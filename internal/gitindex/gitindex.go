@@ -1,5 +1,5 @@
-// Package gitindex reads the staged snapshot (the git index) and HEAD without
-// touching the working tree.
+// Package gitindex reads the staged snapshot (the git index), commits and the
+// working tree.
 package gitindex
 
 import (
@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -107,6 +109,62 @@ func (r *Repo) IndexFiles(pathspecs ...string) ([]string, error) {
 		return nil, err
 	}
 	return splitZ(out), nil
+}
+
+// ResolveBase turns rev into the ID of the commit it names.
+func (r *Repo) ResolveBase(rev string) (string, error) {
+	return r.commit(rev)
+}
+
+// ChangedGoFilesInWorktree lists .go paths that differ between the commit
+// base and the working tree, deletions included, plus untracked .go files
+// that are not ignored. Renames are reported as a deletion and an addition.
+func (r *Repo) ChangedGoFilesInWorktree(base string) ([]string, error) {
+	out, err := run(r.Root, nil, "diff", "--name-only", "-z", "--no-renames", base, "--", "*.go")
+	if err != nil {
+		return nil, err
+	}
+	changed := splitZ(out)
+	untracked, err := run(r.Root, nil, "ls-files", "-z", "--others", "--exclude-standard", "--", "*.go")
+	if err != nil {
+		return nil, err
+	}
+	return append(changed, splitZ(untracked)...), nil
+}
+
+// WorktreeFiles lists the tracked and the untracked, not ignored paths that
+// match the given pathspecs. A tracked path deleted in the working tree is
+// still listed; ReadWorktree reports it as absent.
+func (r *Repo) WorktreeFiles(pathspecs ...string) ([]string, error) {
+	args := append([]string{"ls-files", "-z", "--cached", "--others", "--exclude-standard", "--"}, pathspecs...)
+	out, err := run(r.Root, nil, args...)
+	if err != nil {
+		return nil, err
+	}
+	return splitZ(out), nil
+}
+
+// ReadWorktree returns the content of each repository-relative path as the
+// working tree holds it. Paths that do not exist, or that are not regular
+// files (a symbolic link, say), are absent from the map.
+func (r *Repo) ReadWorktree(paths []string) (map[string][]byte, error) {
+	found := make(map[string][]byte, len(paths))
+	for _, p := range paths {
+		full := filepath.Join(r.Root, filepath.FromSlash(p))
+		info, err := os.Lstat(full)
+		if errors.Is(err, os.ErrNotExist) || (err == nil && !info.Mode().IsRegular()) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", p, err)
+		}
+		content, err := os.ReadFile(full)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", p, err)
+		}
+		found[p] = content
+	}
+	return found, nil
 }
 
 // TreeFiles lists the blob paths in commit rev. With dir set it lists only

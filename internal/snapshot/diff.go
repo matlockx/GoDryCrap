@@ -1,9 +1,10 @@
-// Package snapshot loads Go files from a git diff (staged, or BASE..HEAD) or
-// from explicit paths on disk.
+// Package snapshot loads Go files from a git diff (staged, BASE..HEAD, or BASE
+// against the working tree) or from explicit paths on disk.
 package snapshot
 
 import (
 	"path"
+	"strings"
 
 	"github.com/matlockx/GoDryCrap/internal/analysis"
 	"github.com/matlockx/GoDryCrap/internal/gitindex"
@@ -28,13 +29,17 @@ type side struct {
 	prefix string
 	// commit is the tree's commit, or "" for the index.
 	commit string
-	mods   analysis.Modules
+	// worktree marks the working tree: files are read from disk, not from git.
+	worktree bool
+	mods     analysis.Modules
 }
 
 // LoadDiff reads the diff of the repository containing dir. An empty spec is
-// the staged diff (HEAD against the index); otherwise spec is BASE..HEAD or
-// BASE...HEAD. Files that fail to parse in the before tree are treated as
-// absent there; an after file that fails to parse is an error.
+// the staged diff (HEAD against the index); BASE..HEAD or BASE...HEAD is a
+// commit range; a bare BASE is that commit against the working tree, which
+// includes unstaged edits and untracked files. Files that fail to parse in the
+// before tree are treated as absent there; an after file that fails to parse is
+// an error.
 func LoadDiff(dir, spec string) (*Diff, error) {
 	repo, err := gitindex.Open(dir)
 	if err != nil {
@@ -49,7 +54,12 @@ func LoadDiff(dir, spec string) (*Diff, error) {
 			return nil, err
 		}
 	}
-	changed, err := repo.ChangedGoFiles(d.before.base(), d.after.commit)
+	var changed []string
+	if d.after.worktree {
+		changed, err = repo.ChangedGoFilesInWorktree(d.before.base())
+	} else {
+		changed, err = repo.ChangedGoFiles(d.before.base(), d.after.commit)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -65,13 +75,24 @@ func LoadDiff(dir, spec string) (*Diff, error) {
 }
 
 // resolve sets the two sides for spec: HEAD and the index for the staged
-// diff, or the range's two commits.
+// diff, the range's two commits, or a commit and the working tree.
 func (d *Diff) resolve(spec string) error {
 	d.after = &side{prefix: gitindex.Index}
 	if spec == "" {
 		if d.Repo.HasHEAD() {
 			d.before = &side{prefix: "HEAD:", commit: "HEAD"}
 		}
+		return nil
+	}
+	// DEV-NOTE: a spec without ".." is a bare revision; ResolveRange keeps
+	// rejecting malformed ranges.
+	if !strings.Contains(spec, "..") {
+		base, err := d.Repo.ResolveBase(spec)
+		if err != nil {
+			return err
+		}
+		d.before = &side{prefix: base + ":", commit: base}
+		d.after = &side{worktree: true}
 		return nil
 	}
 	base, head, err := d.Repo.ResolveRange(spec)
@@ -102,12 +123,11 @@ func scorable(paths []string) []string {
 	return out
 }
 
-// parse reads paths from side s and parses them with its modules. Paths
-// absent from the tree are skipped. With lenient set, a file that fails to
-// parse is skipped too.
-func (d *Diff) parse(s *side, paths []string, lenient bool) ([]*analysis.File, error) {
-	if s == nil {
-		return nil, nil
+// read returns the content of paths on side s, keyed by path. Paths absent
+// from the tree are missing from the map.
+func (d *Diff) read(s *side, paths []string) (map[string][]byte, error) {
+	if s.worktree {
+		return d.Repo.ReadWorktree(paths)
 	}
 	names := make([]string, len(paths))
 	for i, p := range paths {
@@ -117,9 +137,29 @@ func (d *Diff) parse(s *side, paths []string, lenient bool) ([]*analysis.File, e
 	if err != nil {
 		return nil, err
 	}
+	byPath := make(map[string][]byte, len(blobs))
+	for _, p := range paths {
+		if b, ok := blobs[s.prefix+p]; ok {
+			byPath[p] = b
+		}
+	}
+	return byPath, nil
+}
+
+// parse reads paths from side s and parses them with its modules. Paths
+// absent from the tree are skipped. With lenient set, a file that fails to
+// parse is skipped too.
+func (d *Diff) parse(s *side, paths []string, lenient bool) ([]*analysis.File, error) {
+	if s == nil {
+		return nil, nil
+	}
+	blobs, err := d.read(s, paths)
+	if err != nil {
+		return nil, err
+	}
 	var files []*analysis.File
 	for _, p := range paths {
-		file, err := parseBlob(p, blobs[s.prefix+p], s.mods, lenient)
+		file, err := parseBlob(p, blobs[p], s.mods, lenient)
 		if err != nil {
 			return nil, err
 		}
@@ -147,13 +187,17 @@ func (d *Diff) list(s *side, dir string) ([]string, error) {
 	if s.commit != "" {
 		return d.Repo.TreeFiles(s.commit, dir)
 	}
+	files := d.Repo.IndexFiles
+	if s.worktree {
+		files = d.Repo.WorktreeFiles
+	}
 	switch dir {
 	case "":
-		return d.Repo.IndexFiles()
+		return files()
 	case ".":
-		return d.Repo.IndexFiles(":(glob)*")
+		return files(":(glob)*")
 	}
-	return d.Repo.IndexFiles(":(glob)" + dir + "/*")
+	return files(":(glob)" + dir + "/*")
 }
 
 // PackageFiles parses every non-test, non-generated Go file directly in dir
@@ -182,20 +226,20 @@ func (d *Diff) loadModules(s *side) error {
 	if err != nil {
 		return err
 	}
-	var names []string
+	var gomods []string
 	for _, p := range listed {
 		if path.Base(p) == "go.mod" {
-			names = append(names, s.prefix+p)
+			gomods = append(gomods, p)
 		}
 	}
-	blobs, err := d.Repo.Read(names)
+	blobs, err := d.read(s, gomods)
 	if err != nil {
 		return err
 	}
 	s.mods = analysis.Modules{}
-	for name, data := range blobs {
+	for p, data := range blobs {
 		if mod := analysis.ModulePath(data); mod != "" {
-			s.mods[path.Dir(name[len(s.prefix):])] = mod
+			s.mods[path.Dir(p)] = mod
 		}
 	}
 	return nil

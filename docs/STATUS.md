@@ -4,7 +4,7 @@ GoDryCrap v1.1.0.
 
 ## Features
 
-- `complexity`, `crap` and `dupes` each work on the staged diff, on a `-diff BASE..HEAD` or `BASE...HEAD` range, and on explicit files and directories.
+- `complexity`, `crap` and `dupes` each work on the staged diff, on a `-diff BASE..HEAD` or `BASE...HEAD` range, on a bare `-diff BASE` against the working tree, and on explicit files and directories. JSON rows carry `before_file` next to `before_cc`.
 - Warn at 9 and fail at 10. `-ratchet` is off by default.
 - `dupes` is advisory, at a Jaccard threshold of 0.8.
 - Exit codes are 0 ok, 1 warn, 2 fail, 3 error. A missing, empty, malformed or wrong-shard coverage profile is exit 3, never 0%. A stale profile is exit 3 when its block layout differs from the current source: profiles are checked block for block against the layout cmd/cover (Go 1.27) instruments. See Known limits for the one case this does not catch.

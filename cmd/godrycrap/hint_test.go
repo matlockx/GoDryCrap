@@ -36,7 +36,7 @@ func TestUserErrorsGetAFixHint(t *testing.T) {
 
 func TestBadRangeGetsAFixHint(t *testing.T) {
 	r := newRepo(t)
-	for _, spec := range []string{"main", "..main", "nope..main"} {
+	for _, spec := range []string{"nope", "..main", "nope..main"} {
 		res := r.run("complexity", "-diff", spec)
 		if res.status != gate.Error || !strings.Contains(res.stderr, "godrycrap: hint: use -diff BASE..HEAD") {
 			t.Errorf("-diff %s: status %v, stderr:\n%s", spec, res.status, res.stderr)

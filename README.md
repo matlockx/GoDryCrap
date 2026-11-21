@@ -121,15 +121,16 @@ godrycrap <complexity|crap|dupes> [flags] [path ...]
 
 Flags may come before or after paths. Put a path that starts with `-` after `--`.
 
-Each command picks the functions to score in one of three ways:
+Each command picks the functions to score in one of four ways:
 
 | Mode | How | Reads |
 | --- | --- | --- |
 | Staged (default) | no paths, no `-diff` | HEAD and the git index. The working tree is never read. |
 | Range | `-diff BASE..HEAD`, or `-diff BASE...HEAD` for the merge base | the two commits |
+| Working tree | `-diff BASE` (a bare revision) | the commit BASE and the files on disk: staged and unstaged edits, and untracked files that are not ignored |
 | Paths | one or more files or directories | the files on disk; every function in them is scored |
 
-In the staged and range modes a function is scored when the diff touched it: it is new, its declaration text changed, or it moved to another file. A function's identity is its package, receiver type and name, so a renamed function is new (with no "before") and a function moved to another file in the same package keeps its history. A change that only deletes code has nothing to score and exits 0.
+In the staged, range and working-tree modes a function is scored when the diff touched it: it is new, its declaration text changed, or it moved to another file. A function's identity is its package, receiver type and name, so a renamed function is new (with no "before") and a function moved to another file in the same package keeps its history. In JSON, `before_cc` and `before_file` give the function's complexity and file before the change (`null` for a new function); `before_file` differs from `file` when the function moved. A change that only deletes code has nothing to score and exits 0.
 
 ### Pre-commit hook
 
@@ -163,7 +164,7 @@ This repo's own workflow (`.github/workflows/ci.yml`) runs gofmt, go vet, static
 | --- | --- |
 | `-format text\|markdown\|json\|tsv` | `text` (default) for hooks; `markdown` for `$GITHUB_STEP_SUMMARY`; `json` and `tsv` for parity scripts (namespace, name, file, lines, CC, coverage, CRAP; dupe pairs and scores) |
 | `-summary` | also append the Markdown to `$GITHUB_STEP_SUMMARY` when it is set |
-| `-diff BASE..HEAD` | score a commit range instead of the staged diff |
+| `-diff BASE..HEAD` | score a commit range instead of the staged diff; `-diff BASE` compares that commit with the working tree |
 | `-C dir` | run git in `dir` |
 
 ### Ratchet

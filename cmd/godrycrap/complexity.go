@@ -18,8 +18,11 @@ type complexityRow struct {
 	Line      int    `json:"start_line"`
 	EndLine   int    `json:"end_line"`
 	Before    *int   `json:"before_cc"`
-	CC        int    `json:"cc"`
-	Ratchet   bool   `json:"ratchet,omitempty"`
+	// BeforeFile is the file that held the function before the change; null
+	// for a new function. It differs from File when the function moved.
+	BeforeFile *string `json:"before_file"`
+	CC         int     `json:"cc"`
+	Ratchet    bool    `json:"ratchet,omitempty"`
 }
 
 type thresholds struct {
@@ -81,8 +84,8 @@ func complexityRows(changes []analysis.Change, th thresholds) ([]complexityRow, 
 			File: c.After.File, Line: c.After.Start, EndLine: c.After.End, CC: c.After.CC, Ratchet: excused,
 		}
 		if c.Before != nil {
-			before := c.Before.CC
-			row.Before = &before
+			before, beforeFile := c.Before.CC, c.Before.File
+			row.Before, row.BeforeFile = &before, &beforeFile
 		}
 		rows = append(rows, row)
 		statuses = append(statuses, status)

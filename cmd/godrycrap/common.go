@@ -27,7 +27,7 @@ type options struct {
 
 func (o *options) register(fs *flag.FlagSet) {
 	fs.StringVar(&o.format, "format", "text", "output format: "+strings.Join(report.Formats, ", "))
-	fs.StringVar(&o.diff, "diff", "", "score the functions changed in `BASE..HEAD` (or BASE...HEAD for the merge base) instead of the staged diff")
+	fs.StringVar(&o.diff, "diff", "", "score the functions changed in `BASE..HEAD` (or BASE...HEAD for the merge base) instead of the staged diff; a bare BASE compares that commit with the working tree, untracked files included")
 	fs.StringVar(&o.dir, "C", ".", "run git in `dir`")
 	fs.BoolVar(&o.summary, "summary", false, "also append Markdown to $GITHUB_STEP_SUMMARY when it is set")
 }

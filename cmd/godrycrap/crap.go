@@ -16,18 +16,21 @@ import (
 )
 
 type crapRow struct {
-	Status    string  `json:"status"`
-	Namespace string  `json:"namespace"`
-	Name      string  `json:"name"`
-	File      string  `json:"file"`
-	Line      int     `json:"start_line"`
-	EndLine   int     `json:"end_line"`
-	Before    *int    `json:"before_cc"`
-	CC        int     `json:"cc"`
-	Coverage  float64 `json:"coverage"`
-	CRAP      float64 `json:"crap"`
-	Ratchet   bool    `json:"ratchet,omitempty"`
-	level     gate.Status
+	Status    string `json:"status"`
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+	File      string `json:"file"`
+	Line      int    `json:"start_line"`
+	EndLine   int    `json:"end_line"`
+	Before    *int   `json:"before_cc"`
+	// BeforeFile is the file that held the function before the change; null
+	// for a new function. It differs from File when the function moved.
+	BeforeFile *string `json:"before_file"`
+	CC         int     `json:"cc"`
+	Coverage   float64 `json:"coverage"`
+	CRAP       float64 `json:"crap"`
+	Ratchet    bool    `json:"ratchet,omitempty"`
+	level      gate.Status
 }
 
 // profileList is a repeatable -coverprofile flag.
@@ -162,8 +165,8 @@ func (o *crapOptions) row(c analysis.Change, blocks []coverage.Block) crapRow {
 		Line: fn.Start, EndLine: fn.End, CC: fn.CC, Coverage: pct, CRAP: score, Ratchet: excused, level: status,
 	}
 	if c.Before != nil {
-		before := c.Before.CC
-		row.Before = &before
+		before, beforeFile := c.Before.CC, c.Before.File
+		row.Before, row.BeforeFile = &before, &beforeFile
 	}
 	return row
 }

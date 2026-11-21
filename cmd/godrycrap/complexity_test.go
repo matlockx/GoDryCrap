@@ -153,7 +153,56 @@ func TestComplexityDiffRange(t *testing.T) {
 	r.run("complexity", "-diff", base+"..HEAD", "-format", "tsv").want(t, gate.Fail, "fail\t10\t2\texample.com/m/p.F")
 	r.run("complexity", "-diff", "main...HEAD").want(t, gate.OK, "0 functions")
 	r.run("complexity", "-diff", "nope..HEAD").want(t, gate.Error, "unknown revision")
-	r.run("complexity", "-diff", "HEAD").want(t, gate.Error, "want BASE..HEAD")
+}
+
+func TestComplexityDiffWorkingTree(t *testing.T) {
+	r := newRepo(t)
+	r.stage(map[string]string{"p/a.go": "package p\n" + fn("Edited", 2) + fn("Gone", 12), "p/b.go": "package p\n" + fn("Drop", 12), "p/c.go": "package p\n" + fn("Mover", 4)})
+	r.commit("base")
+	r.stage(map[string]string{"p/a.go": "package p\n" + fn("Edited", 3) + fn("Gone", 12)})
+	// Neither the staged edit nor the files below is what the diff reports.
+	r.write("p/a.go", "package p\n"+fn("Edited", 6)+fn("Gone", 12))
+	r.write("p/new.go", "package p\n"+fn("Fresh", 5))
+	r.write("p/c.go", "package p\n")
+	r.write("p/moved.go", "package p\n"+fn("Mover", 4))
+	if err := os.Remove(filepath.Join(r.dir, "p/b.go")); err != nil {
+		t.Fatal(err)
+	}
+	res := r.run("complexity", "-diff", "HEAD", "-format", "tsv")
+	res.want(t, gate.OK, "ok\t6\t2\texample.com/m/p.Edited", "ok\t5\tnew\texample.com/m/p.Fresh", "ok\t4\t4\texample.com/m/p.Mover\tp/moved.go:2")
+	res.lacks(t, "p.Gone", "p.Drop")
+}
+
+func TestComplexityBeforeFile(t *testing.T) {
+	r := newRepo(t)
+	r.stage(map[string]string{"p/a.go": "package p\n" + fn("Edited", 2) + fn("Mover", 4)})
+	r.commit("base")
+	r.stage(map[string]string{"p/a.go": "package p\n" + fn("Edited", 3), "p/b.go": "package p\n" + fn("Mover", 4) + fn("Added", 1)})
+	res := r.run("complexity", "-format", "json")
+	res.want(t, gate.OK)
+	var payload struct {
+		Functions []complexityRow `json:"functions"`
+	}
+	if err := json.Unmarshal([]byte(res.stdout), &payload); err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{"Edited": "p/a.go", "Mover": "p/a.go", "Added": ""}
+	for _, row := range payload.Functions {
+		switch before := want[row.Name]; {
+		case before == "" && row.BeforeFile != nil:
+			t.Errorf("%s before_file = %q, want null", row.Name, *row.BeforeFile)
+		case before != "" && (row.BeforeFile == nil || *row.BeforeFile != before):
+			t.Errorf("%s before_file = %v, want %q", row.Name, row.BeforeFile, before)
+		}
+	}
+	if len(payload.Functions) != 3 {
+		t.Fatalf("rows = %+v, want Edited, Mover and Added", payload.Functions)
+	}
+}
+
+func TestComplexityBareBaseUnknown(t *testing.T) {
+	r := newRepo(t)
+	r.run("complexity", "-diff", "nope").want(t, gate.Error, "unknown revision")
 }
 
 func TestComplexityRatchet(t *testing.T) {
