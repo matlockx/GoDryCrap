@@ -10,7 +10,9 @@ import (
 	"github.com/matlockx/GoDryCrap/internal/report"
 )
 
-type complexityRow struct {
+// rowHead is the identity of a changed function in a JSON row: what it is,
+// where it is, and what it was before the change.
+type rowHead struct {
 	Status    string `json:"status"`
 	Namespace string `json:"namespace"`
 	Name      string `json:"name"`
@@ -21,8 +23,24 @@ type complexityRow struct {
 	// BeforeFile is the file that held the function before the change; null
 	// for a new function. It differs from File when the function moved.
 	BeforeFile *string `json:"before_file"`
-	CC         int     `json:"cc"`
-	Ratchet    bool    `json:"ratchet,omitempty"`
+}
+
+// headOf describes the after side of c with the given status and, when the
+// function existed before, its complexity and file there.
+func headOf(status gate.Status, c analysis.Change) rowHead {
+	fn := c.After
+	head := rowHead{Status: status.String(), Namespace: fn.Namespace, Name: fn.Name, File: fn.File, Line: fn.Start, EndLine: fn.End}
+	if c.Before != nil {
+		before, beforeFile := c.Before.CC, c.Before.File
+		head.Before, head.BeforeFile = &before, &beforeFile
+	}
+	return head
+}
+
+type complexityRow struct {
+	rowHead
+	CC      int  `json:"cc"`
+	Ratchet bool `json:"ratchet,omitempty"`
 }
 
 type thresholds struct {
@@ -79,14 +97,7 @@ func complexityRows(changes []analysis.Change, th thresholds) ([]complexityRow, 
 		if excused {
 			status = gate.Warn
 		}
-		row := complexityRow{
-			Status: status.String(), Namespace: c.After.Namespace, Name: c.After.Name,
-			File: c.After.File, Line: c.After.Start, EndLine: c.After.End, CC: c.After.CC, Ratchet: excused,
-		}
-		if c.Before != nil {
-			before, beforeFile := c.Before.CC, c.Before.File
-			row.Before, row.BeforeFile = &before, &beforeFile
-		}
+		row := complexityRow{rowHead: headOf(status, c), CC: c.After.CC, Ratchet: excused}
 		rows = append(rows, row)
 		statuses = append(statuses, status)
 	}

@@ -63,19 +63,27 @@ func (t Tags) satisfied(tag string) bool {
 	return slices.Contains(t.Release, tag) || slices.Contains(t.Extra, tag)
 }
 
-// goodName applies the _GOOS, _GOARCH and _GOOS_GOARCH file name suffix rules
-// of go/build, including the _test suffix.
-func (t Tags) goodName(path string) bool {
+// nameSuffixes returns the "_"-separated parts after the first "_" of a file's
+// base name, without a trailing "test" part: the candidates for a GOOS and
+// GOARCH suffix. A name without "_" has none.
+func nameSuffixes(path string) []string {
 	name := path[strings.LastIndex(path, "/")+1:]
 	name, _, _ = strings.Cut(name, ".")
 	i := strings.Index(name, "_")
 	if i < 0 {
-		return true
+		return nil
 	}
 	parts := strings.Split(name[i:], "_")
 	if n := len(parts); n > 0 && parts[n-1] == "test" {
 		parts = parts[:n-1]
 	}
+	return parts
+}
+
+// goodName applies the _GOOS, _GOARCH and _GOOS_GOARCH file name suffix rules
+// of go/build, including the _test suffix.
+func (t Tags) goodName(path string) bool {
+	parts := nameSuffixes(path)
 	n := len(parts)
 	if n >= 2 && slices.Contains(knownOS, parts[n-2]) && slices.Contains(knownArch, parts[n-1]) {
 		return t.satisfied(parts[n-2]) && t.satisfied(parts[n-1])

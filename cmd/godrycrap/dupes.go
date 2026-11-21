@@ -46,6 +46,27 @@ type dupeOptions struct {
 	block     bool
 }
 
+// table lists rows, naming in the summary whether a pair blocks.
+func (o *dupeOptions) table(rows []dupeRow) report.Table {
+	verdict := "advisory"
+	if o.block {
+		verdict = "blocking"
+	}
+	table := report.Table{
+		Title:   "godrycrap dupes",
+		Summary: fmt.Sprintf("%d candidate pairs at or above %v (%s)", len(rows), o.threshold, verdict),
+		Columns: []string{"score", "function", "location", "similar to", "location"},
+	}
+	for _, r := range rows {
+		table.Rows = append(table.Rows, []string{
+			strconv.FormatFloat(r.Score, 'f', 4, 64),
+			r.Left.label(), r.Left.span(),
+			r.Right.label(), r.Right.span(),
+		})
+	}
+	return table
+}
+
 func runDupes(args []string, stdout, stderr io.Writer) gate.Status {
 	fs := flag.NewFlagSet("dupes", flag.ContinueOnError)
 	var o dupeOptions
@@ -65,22 +86,7 @@ func runDupes(args []string, stdout, stderr io.Writer) gate.Status {
 	if err != nil {
 		return fail(stderr, "dupes", err)
 	}
-	verdict := "advisory"
-	if o.block {
-		verdict = "blocking"
-	}
-	table := report.Table{
-		Title:   "godrycrap dupes",
-		Summary: fmt.Sprintf("%d candidate pairs at or above %v (%s)", len(rows), o.threshold, verdict),
-		Columns: []string{"score", "function", "location", "similar to", "location"},
-	}
-	for _, r := range rows {
-		table.Rows = append(table.Rows, []string{
-			strconv.FormatFloat(r.Score, 'f', 4, 64),
-			r.Left.label(), r.Left.span(),
-			r.Right.label(), r.Right.span(),
-		})
-	}
+	table := o.table(rows)
 	if err := o.emit(stdout, table, map[string]any{"command": "dupes", "threshold": o.threshold, "scope": o.scope, "pairs": rows}); err != nil {
 		return fail(stderr, "dupes", err)
 	}
