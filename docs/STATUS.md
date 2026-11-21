@@ -6,7 +6,7 @@ GoDryCrap v1.1.0.
 
 - `complexity`, `crap` and `dupes` each work on the staged diff, on a `-diff BASE..HEAD` or `BASE...HEAD` range, on a bare `-diff BASE` against the working tree, and on explicit files and directories. JSON rows carry `before_file` next to `before_cc`.
 - Warn at 9 and fail at 10. `-ratchet` is off by default.
-- `dupes` is advisory, at a Jaccard threshold of 0.8.
+- `dupes` is advisory by default, at a Jaccard threshold of 0.8. `-scope module` compares each changed function with its whole module; `-block` exits 2 when a pair is reported.
 - Exit codes are 0 ok, 1 warn, 2 fail, 3 error. A missing, empty, malformed or wrong-shard coverage profile is exit 3, never 0%. A stale profile is exit 3 when its block layout differs from the current source: profiles are checked block for block against the layout cmd/cover (Go 1.27) instruments. See Known limits for the one case this does not catch.
 - `godrycrap version` prints the version line, which also starts text and Markdown output; JSON has `version` and `go_version` fields.
 - Errors the user can fix print a `godrycrap: hint:` line; internal errors and panics exit 3 with a ready-made `gh issue create` command.
@@ -49,6 +49,7 @@ GoDryCrap v1.1.0.
 | `ent/`, `gen/` excluded for named roots, descendants and files | `TestComplexityPathModeSkipsGeneratedDirsWhenNamed`, `TestComplexityPathModeModuleUnderGenDir` |
 | README pre-commit hook, complexity exits 0-3 and a dupes error | `TestReadmeHookExitCodes` |
 | Path-mode dupes compares within each package and loads packages one at a time; path mode drops syntax trees | `TestDupesPathModeComparesPerPackage`, `TestListPathsGroupsByDirectory`, `TestLoadPathsDropsSyntax` |
+| `dupes -scope module` finds a copy in another package of the module and stops at a nested module; `-block` exits 2 on a reported pair only; an unknown scope is a usage error | `TestDupesModuleScopeFindsCopyInAnotherPackage`, `TestDupesModuleScopeStopsAtNestedModule`, `TestDupesBlockExitsOnReportedPair`, `TestDupesBlockPassesOnUnchangedPair`, `TestDupesUnknownScopeIsError` |
 | Flags accepted after paths; `--` ends flags | `TestFlagsAfterPaths` |
 | crapper's Go cases from `tests/test_go.py`, with identical expected names, namespaces and CCs | `TestCrapperCountsTheSameDecisions`, `TestCrapperMethodsNamespacedByReceiverType`, `TestCrapperImportPathComesFromGoMod` |
 | Profiles checked against the exact cmd/cover block layout: count, spans and statement counts per function | `TestMatchesGoCover` (76 blocks from a real go1.27.3 profile), `TestCrapExpandedBodyKeepsFirstStatement`, `TestCrapStaleProfile` (appended function, shifted body, true positive), `TestCrapBlockCountAndStatementMismatch` |

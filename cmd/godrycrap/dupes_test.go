@@ -131,3 +131,50 @@ func TestDupesPathModeComparesPerPackage(t *testing.T) {
 	res.want(t, gate.OK, "example.com/m/q.SumPositive", "example.com/m/q.TotalAboveZero")
 	res.lacks(t, "example.com/m/p.")
 }
+
+func TestDupesModuleScopeFindsCopyInAnotherPackage(t *testing.T) {
+	a, b, _ := nearFixture(t)
+	r := newRepo(t)
+	r.stage(map[string]string{"go.mod": "module example.com/m\n", "q/old.go": strings.Replace(nearImports, "package p", "package q", 1) + a})
+	r.commit("base")
+	r.stage(map[string]string{"p/new.go": nearImports + b})
+	r.run("dupes").want(t, gate.OK, "0 candidate pairs")
+	res := r.run("dupes", "-scope", "module", "-format", "tsv")
+	res.want(t, gate.OK, "example.com/m/p.TotalAboveZero\tp/new.go:", "example.com/m/q.SumPositive\tq/old.go:")
+}
+
+func TestDupesModuleScopeStopsAtNestedModule(t *testing.T) {
+	a, b, _ := nearFixture(t)
+	r := newRepo(t)
+	r.stage(map[string]string{
+		"go.mod":       "module example.com/m\n",
+		"sub/go.mod":   "module example.com/sub\n",
+		"sub/q/old.go": strings.Replace(nearImports, "package p", "package q", 1) + a,
+	})
+	r.commit("base")
+	r.stage(map[string]string{"p/new.go": nearImports + b})
+	r.run("dupes", "-scope", "module").want(t, gate.OK, "0 candidate pairs")
+}
+
+func TestDupesBlockExitsOnReportedPair(t *testing.T) {
+	a, b, _ := nearFixture(t)
+	r := newRepo(t)
+	r.stage(map[string]string{"p/old.go": nearImports + a})
+	r.commit("base")
+	r.stage(map[string]string{"p/new.go": nearImports + b})
+	r.run("dupes", "-block").want(t, gate.Fail, "1 candidate pairs", "(blocking)")
+	r.run("dupes").want(t, gate.OK, "(advisory)")
+}
+
+func TestDupesBlockPassesOnUnchangedPair(t *testing.T) {
+	a, b, _ := nearFixture(t)
+	r := newRepo(t)
+	r.stage(map[string]string{"p/old.go": nearImports + a + "\n" + b})
+	r.commit("base")
+	r.stage(map[string]string{"p/other.go": "package p\n" + fn("Unrelated", 2)})
+	r.run("dupes", "-block").want(t, gate.OK, "0 candidate pairs")
+}
+
+func TestDupesUnknownScopeIsError(t *testing.T) {
+	runIn(t, "dupes", "-scope", "world").want(t, gate.Error, "unknown -scope", "godrycrap dupes -h")
+}

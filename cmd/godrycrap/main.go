@@ -16,16 +16,17 @@ const usage = `Usage: godrycrap <command> [flags] [path ...]
 Commands:
   complexity  cyclomatic complexity of changed functions
   crap        CRAP score of changed functions from an existing coverage profile
-  dupes       structural near-duplicates of changed functions (advisory)
+  dupes       structural near-duplicates of changed functions (advisory; -block fails)
 
 With no paths, each command scores the functions the staged diff touched
-(HEAD against the git index; the working tree is never read), or the
-functions a -diff BASE..HEAD range touched. With paths, it scores every
-function in the named files and directories on disk. Flags may come
-before or after paths; put a path that starts with - after --.
+(HEAD against the git index; the working tree is never read), the
+functions a -diff BASE..HEAD range touched, or with -diff BASE the
+functions that differ between BASE and the working tree. With paths, it
+scores every function in the named files and directories on disk. Flags
+may come before or after paths; put a path that starts with - after --.
 
 Exit codes: 0 ok, 1 warn, 2 fail, 3 error (usage, git, parse, or a missing,
-empty or mismatched coverage profile). dupes exits 0 or 3.
+empty or mismatched coverage profile). dupes exits 0 or 3, and 2 with -block.
 
 Run 'godrycrap <command> -h' for the command's flags, and
 'godrycrap version' (or -version) for the version.

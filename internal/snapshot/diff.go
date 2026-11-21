@@ -217,6 +217,36 @@ func (d *Diff) PackageFiles(dir string) ([]*analysis.File, error) {
 	return d.parse(d.after, paths, false)
 }
 
+// ModuleRoot returns the directory of the go.mod that governs dir in the
+// after tree, or "." when none does.
+func (d *Diff) ModuleRoot(dir string) string {
+	for current := path.Clean(dir); ; current = path.Dir(current) {
+		if _, ok := d.after.mods[current]; ok {
+			return current
+		}
+		if current == "." || current == "/" {
+			return "."
+		}
+	}
+}
+
+// ModuleFiles parses every non-test, non-generated Go file of the module
+// rooted at root (a ModuleRoot result) as the after tree holds it. Files of
+// a module nested below root are left out.
+func (d *Diff) ModuleFiles(root string) ([]*analysis.File, error) {
+	listed, err := d.list(d.after, "")
+	if err != nil {
+		return nil, err
+	}
+	var paths []string
+	for _, p := range scorable(listed) {
+		if d.ModuleRoot(path.Dir(p)) == root {
+			paths = append(paths, p)
+		}
+	}
+	return d.parse(d.after, paths, false)
+}
+
 // loadModules reads every go.mod in side s.
 func (d *Diff) loadModules(s *side) error {
 	if s == nil {

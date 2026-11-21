@@ -13,6 +13,7 @@ import (
 	"github.com/matlockx/GoDryCrap/internal/gate"
 	"github.com/matlockx/GoDryCrap/internal/report"
 	"github.com/matlockx/GoDryCrap/internal/snapshot"
+	"github.com/matlockx/GoDryCrap/internal/usererr"
 )
 
 type dupeSide struct {
@@ -30,11 +31,19 @@ type dupeRow struct {
 	Right dupeSide `json:"right"`
 }
 
+// Values of -scope.
+const (
+	scopePackage = "package"
+	scopeModule  = "module"
+)
+
 type dupeOptions struct {
 	options
 	threshold float64
 	minLines  int
 	minNodes  int
+	scope     string
+	block     bool
 }
 
 func runDupes(args []string, stdout, stderr io.Writer) gate.Status {
@@ -44,16 +53,25 @@ func runDupes(args []string, stdout, stderr io.Writer) gate.Status {
 	fs.Float64Var(&o.threshold, "threshold", dupes.DefaultThreshold, "minimum Jaccard similarity to report")
 	fs.IntVar(&o.minLines, "min-lines", dupes.DefaultMinLines, "minimum source lines in a compared function")
 	fs.IntVar(&o.minNodes, "min-nodes", dupes.DefaultMinNodes, "minimum normalized syntax nodes in a compared function")
+	fs.StringVar(&o.scope, "scope", scopePackage, "what a changed function is compared with in diff modes: its package, or with `module` every non-test function of its module")
+	fs.BoolVar(&o.block, "block", false, "exit 2 when a pair is reported (every reported pair has a changed function)")
 	if done, err := parse(fs, &o.options, args, stderr); done || err != nil {
 		return parseStatus(stderr, "dupes", err)
+	}
+	if o.scope != scopePackage && o.scope != scopeModule {
+		return parseStatus(stderr, "dupes", usererr.Wrap(fmt.Errorf("unknown -scope %q (want %s or %s)", o.scope, scopePackage, scopeModule), flagHint(fs)))
 	}
 	rows, err := o.find()
 	if err != nil {
 		return fail(stderr, "dupes", err)
 	}
+	verdict := "advisory"
+	if o.block {
+		verdict = "blocking"
+	}
 	table := report.Table{
 		Title:   "godrycrap dupes",
-		Summary: fmt.Sprintf("%d candidate pairs at or above %v (advisory)", len(rows), o.threshold),
+		Summary: fmt.Sprintf("%d candidate pairs at or above %v (%s)", len(rows), o.threshold, verdict),
 		Columns: []string{"score", "function", "location", "similar to", "location"},
 	}
 	for _, r := range rows {
@@ -63,16 +81,20 @@ func runDupes(args []string, stdout, stderr io.Writer) gate.Status {
 			r.Right.label(), r.Right.span(),
 		})
 	}
-	if err := o.emit(stdout, table, map[string]any{"command": "dupes", "threshold": o.threshold, "pairs": rows}); err != nil {
+	if err := o.emit(stdout, table, map[string]any{"command": "dupes", "threshold": o.threshold, "scope": o.scope, "pairs": rows}); err != nil {
 		return fail(stderr, "dupes", err)
+	}
+	if o.block && len(rows) > 0 {
+		return gate.Fail
 	}
 	return gate.OK
 }
 
-// find compares each function with the others in its package: every
-// function in path mode, or each changed function in diff mode. Packages
-// are loaded and released one at a time, and only the reported pairs are
-// kept, so memory is bounded by the largest package.
+// find compares each function with the others in its pool: every function
+// in path mode (per package), or each changed function in diff mode. The
+// pool is the changed function's package, or with -scope module its whole
+// module. Pools are loaded and released one at a time, and only the
+// reported pairs are kept, so memory is bounded by the largest pool.
 func (o *dupeOptions) find() ([]dupeRow, error) {
 	if len(o.paths) > 0 {
 		return o.findInPaths()
@@ -81,13 +103,17 @@ func (o *dupeOptions) find() ([]dupeRow, error) {
 	if err != nil {
 		return nil, err
 	}
-	changed := map[string]bool{}
+	pools := map[string]bool{}
 	for _, c := range t.changes {
-		changed[path.Dir(c.After.File)] = true
+		dir := path.Dir(c.After.File)
+		if o.scope == scopeModule {
+			dir = t.diff.ModuleRoot(dir)
+		}
+		pools[dir] = true
 	}
 	rows := []dupeRow{}
-	for dir := range changed {
-		found, err := o.inPackage(t, dir)
+	for dir := range pools {
+		found, err := o.against(t, dir)
 		if err != nil {
 			return nil, err
 		}
@@ -136,10 +162,17 @@ func sortRows(rows []dupeRow) {
 	})
 }
 
-// inPackage compares the changed functions in dir with every function in
-// the package.
-func (o *dupeOptions) inPackage(t *target, dir string) ([]dupes.Pair, error) {
-	files, err := t.diff.PackageFiles(dir)
+// against compares the changed functions of one pool with every function
+// in it. The pool is the package in dir, or with -scope module the module
+// rooted at dir.
+func (o *dupeOptions) against(t *target, dir string) ([]dupes.Pair, error) {
+	var files []*analysis.File
+	var err error
+	if o.scope == scopeModule {
+		files, err = t.diff.ModuleFiles(dir)
+	} else {
+		files, err = t.diff.PackageFiles(dir)
+	}
 	if err != nil {
 		return nil, err
 	}

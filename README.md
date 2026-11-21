@@ -101,7 +101,7 @@ godrycrap dupes
 godrycrap dupes -threshold 0.9 ./pkg/foo
 ```
 
-It is advisory: it exits 0 unless there is an error. Functions are compared only within their package (directory). In the staged and range modes each changed function is compared with every function in its package (as the after tree holds it). In path mode every function is compared with every other function in its package; packages are loaded and released one at a time, so memory is bounded by the largest package, not the tree.
+It is advisory by default: it exits 0 unless there is an error, and with `-block` it exits 2 when a pair is reported (every reported pair has a changed function on a side; in path mode every function counts as changed). Functions are compared within their package (directory) unless `-scope module` is given. In the staged and range modes each changed function is compared with every function in its package (as the after tree holds it), or with `-scope module` with every non-test function of its module, nested modules excluded. In path mode every function is compared with every other function in its package; `-scope` does not apply there. Pools are loaded and released one at a time, so memory is bounded by the largest package, or with `-scope module` by the largest module, not the tree.
 
 ## Install
 
@@ -186,7 +186,7 @@ Text and Markdown output start with that line. JSON output has `version` and `go
 | 2 | fail: something reached the fail level |
 | 3 | error: usage, git or parse failure, or a missing, empty or mismatched coverage profile |
 
-`dupes` exits only 0 or 3.
+`dupes` exits 0 or 3, and 2 with `-block` when it reports a pair.
 
 ### What is skipped
 
